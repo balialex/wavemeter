@@ -1,0 +1,14 @@
+{
+    "PID": {
+        "D": 0.5,
+        "I": 0.2,
+        "Llim": 0.0,
+        "P": 0.0,
+        "Ulim": 20.0,
+        "uselims": false
+    },
+    "SP": 20.0,
+    "lock": false,
+    "offset": 1.0,
+    "sampling": 1.0
+}

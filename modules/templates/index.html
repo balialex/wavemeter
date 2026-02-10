@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Web lock interface</title>
+        <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <script type="text/javascript" src="{{url_for('static',filename='script.js')}}"></script>
+        <!--<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script>-->
+    
+<style>
+.div_channel_values {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0,0,0,0.7);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    z-index: 9999;
+}
+
+.channel_box {
+    background-color: rgba(255,255,255,0.1);
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 14px;
+    min-width: 60px;
+    text-align: center;
+}
+</style>
+
+
+
+
+
+
+</head>
+
+    <body>
+        <header class="header">
+            <span class="title">Web-lock Controller</span>
+        </header>
+
+
+        <div class="div_main"  id="main">
+            <!--
+            <div class="div_head"  id="headline">
+                <h2>Web-lock Controller</h2>
+                <hr />
+            </div>
+            -->
+            <div class="div_input">
+                {% if form_indicate %}
+                <div class="div_row">
+                    {{ form_indicate|safe }}
+                </div>
+                {% endif %}
+                {% if form_select %}
+                <div class="div_row">
+                    <div class="div_select">
+                        <select class="selector" id="selected">{{ form_select|safe }}</select>
+                    </div>
+                </div>
+                <div class="div_row">
+                    <div class="div_elements">
+                        <div class="div_btn">
+                            <button type="submit" id="lock_button" onclick="lock()">Lock</button>
+                        </div>
+                        <div class='div_btn'>
+                            <button type="submit" id="unlock_button" onclick="unlock()">Unlock</button>
+                        </div>
+                        <div class='vl'></div>
+                        <div class='div_btn'>
+                            <button type="submit" id="activate_button" onclick="activate()">Act.</button>
+                        </div>
+                        <div class='div_btn'>
+                            <button type="submit" id="deactivate_button" onclick="deactivate()">Deact.</button>
+                        </div>
+                        <div class='vl'></div>
+                        <div class='div_btn' id='result'>
+                            <span class="res_indicator" style="" id="res_indicator"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="div_row">
+                    <div class="div_table">
+                        <table>
+                            <tr><th>Setpoint</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_setpoint"></th></tr>
+                            <tr><th>Offset</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_offset"></th></tr>
+                            <tr><th>P</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_P"></th></tr>
+                            <tr><th>I</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_I"></th></tr>
+                            <tr><th>D</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_D"></th></tr>
+                            <tr><th>Limit-</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_lower"></th></tr>
+                            <tr><th>Limit+</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_upper"></th></tr>
+                            <tr><th>Range Center</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_center"></th></tr>
+                            <tr><th>Range Span</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="par_span"></th></tr>
+				<tr><th>PID Ramp Rate [V/s]</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="ramp_rate"></th></tr>
+			<tr><th>WM Expos. [ms]</th><th><input type="number" value="0.0" step="0.5" onchange="write_parameter()" id="WM_Exposure"></th></tr>
+
+			<tr><th>Manual Set Piezo [V]</th><th><input type="number" value="0.0" step="0.1" onchange="manual_set_piezo()" id="Set_Piezo"></th></tr>
+				 <tr>
+    <th>WM Readout State</th>
+    <td style="text-align: left;">
+        <span id="WM_Reading_State">{{ WM_Reading_State }}</span>
+    </td>
+</tr>
+                            <tr><th>
+                                <button type="submit" id="refresh_button" onclick="update_selection()">Refresh</button>
+                                </th><th>
+                                <button type="submit" id="update_button" onclick="write_parameter()">Update</button>
+                            </th></tr>
+                        </table>
+                    </div>
+                    <div class="div_indicator">
+                        <span class="dot" style="" id="dot_active" onclick="toggle_activate()">A</span>
+                        <span class="dot" style="" id="dot_lock" onclick="toggle_lock()">L</span>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="div_row">
+                    <div class="div_elements">
+                        <div class="div_btn">
+                            <button type="submit" class="btn_stop" id="stop_button" onclick="stop()">Stop</button>
+                        </div>
+                    </div>
+                </div>
+
+<div class="div_row">
+    <div class="div_table">
+        <table>
+            <tr>
+                <th>WM Reference Frequency [THz]</th>
+                <th><input type="number" value="650.0" step="0.0001" id="wm_calibration_frequency" onchange="update_calibration_settings()"></th>
+            </tr>
+            <tr>
+                <th>Calibration Interval [s]</th>
+                <th><input type="number" value="3600" step="10" id="wm_calibration_interval" onchange="update_calibration_settings()"></th>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div id="channel_table_container">
+    <table id="channel_table">
+        <thead>
+            <tr>
+                <th>Channel</th>
+                <th>Frequency in THz</th>
+		<th>Applied Piezo Voltage  [V] </th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Zeilen werden hier dynamisch eingefügt -->
+        </tbody>
+    </table>
+</div>
+
+
+            </div>
+            <div class="div_output">
+                <div class="div_row">
+                    {% if form_select %}
+                    <div class="div_elements">
+                        <div class='div_btn'>
+                            <button type="submit" id="plot_button" onclick="plot()">Plot</button>
+                        </div>
+                        <div class='div_btn'>
+                            <button type="submit" id="clear_button" onclick="clear_plot()">Clear</button>
+                        </div>
+                        <div class='vl'></div>
+                        <div class="div_btn">
+                            <input type="button" value="Start Plot Timer" id="plot_timer_button" onclick="plot_timer()">
+                        </div>
+                        <div class="div_btn">
+                            <label for="par_timer">Update intevall (ms)</label>
+                            <input type="text" id="par_timer" name="par_timer" value="1000.">
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="div_graph" id="graph"></div>
+            </div>
+        </div>
+<div class="div_row">
+    <div class="div_elements">
+        <div class="div_btn">
+            <button type="submit" class="btn_log" id="logging_button" onclick="toggle_logging()">Start Saving CSV</button>
+        </div>
+    </div>
+</div>
+
+<!-- WM Initialize / Abort Toggle -->
+<button id="wm_button" onclick="wmToggle()">WM Initialize Calibration</button>
+
+<!-- Separater Calibrate Button -->
+<button onclick="wmCalibrate()">WM Calibrate</button>
+
+<div class="div_digit_display">
+    <span id="digit_display">000.000000</span> THz
+</div>
+
+<style>
+.div_digit_display {
+    position: fixed;
+    top: 50px; 
+    right: 10px;
+    background-color: rgba(0,0,0,0.7);
+    color: #00FF00;
+    font-family: 'Courier New', monospace;
+    font-size: 24px;
+    font-weight: bold;
+    padding: 5px 10px;
+    border-radius: 5px;
+    z-index: 9999;
+}
+</style>
+<script>
+// Funktion zum Aktualisieren des Digit Displays
+function updateDigitDisplay(value){
+    const display = document.getElementById('digit_display');
+    // Formatieren auf 6 Stellen insgesamt, 3 Nachkommastellen
+    display.textContent = parseFloat(value).toFixed(6);
+}
+
+// Beispiel: alle 1 Sekunde aktualisieren mit Backend-Wert
+setInterval(() => {
+    $.get("/api/get_frequency", (data) => {
+        updateDigitDisplay(data.frequency);
+    });
+}, 1000);
+</script>
+
+<div id="reference_lock_container" style="display: flex; align-items: center; margin-top: 10px;">
+    <div id="reference_lock_indicator" 
+         style="width: 20px; height: 20px; border-radius: 50%; background-color: red; margin-right: 10px;">
+    </div>
+    <span id="reference_lock_text">Reference Laser Lock State: NOT LOCKED</span>
+</div>
+
+    </body>
+</html>
