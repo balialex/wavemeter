@@ -53,12 +53,30 @@ class DACWriter(Protocol):
 
 @dataclass
 class ChannelConfig:
-    """Configuration for a single logical lock channel."""
+    """Configuration for a single logical lock channel.
+
+    Parameters
+    ----------
+    logical_id:
+        ID used by higher-level code to refer to this lock channel
+        (also passed into the PID).
+    wlm_channel:
+        WLM channel index used with `GetFrequencyNum`.
+    dac_limits:
+        (min, max) voltage for this channel; values will be clamped to this
+        range before being written to the DAC.
+    switch_command:
+        Optional command string for the Sercalo switch (e.g. "A", "B", "C", "D").
+    dac_channel:
+        Optional physical DAC channel index. If omitted, callers may map
+        `logical_id` to DAC channels directly.
+    """
 
     logical_id: int
     wlm_channel: int
     dac_limits: Tuple[Optional[float], Optional[float]]
     switch_command: Optional[str] = None  # e.g. "A", "B", "C", "D"
+    dac_channel: Optional[int] = None
 
 
 class _EventAdapter:
@@ -380,10 +398,79 @@ class OptimizedLock:
                 pass
 
 
+def build_hardware_optimized_lock(
+    channels: Sequence[ChannelConfig],
+    setpoints_hz: Dict[int, float],
+    pid_gains: Tuple[float, float, float],
+    switch: Optional[SwitchInterface] = None,
+    event_adapter: Optional[_EventAdapter] = None,
+    wlm: Optional[WavelengthMeter] = None,
+    daq: Optional["USB_DAO"] = None,
+) -> OptimizedLock:
+    """
+    Convenience constructor that wires `OptimizedLock` to the existing
+    HighFinesse wavemeter and USB DAQ stack used in the BaLi lab.
+
+    This helper:
+    - Instantiates `modules.wavelengthmeter.WavelengthMeter` for WLM access.
+    - Instantiates `modules.usb_dao.USB_DAO` for DAC output.
+    - Creates a simple PID per logical channel using `modules.PID.PID`.
+    - Maps `logical_id` to physical DAC output channels, defaulting to
+      `dac_channel` when set, or `logical_id - 1` otherwise.
+
+    The Sercalo fiber switch (if present) can be passed in via `switch`
+    as a `FiberSwitch` instance from `modules.FiberSwitchCommunication`,
+    which already implements the required `SendCommand` method.
+    """
+    from modules.usb_dao import USB_DAO
+    from modules.PID import PID as CorePID
+
+    # Allow callers to inject existing hardware handles so that legacy and
+    # optimized paths can share the same WLM / DAC instances. If not
+    # provided, create fresh ones.
+    if wlm is None:
+        wlm = WavelengthMeter()
+    if daq is None:
+        daq = USB_DAO()
+
+    # Prepare per-channel PID controllers using the existing simple PID core.
+    kp, ki, kd = pid_gains
+    channel_by_id: Dict[int, ChannelConfig] = {c.logical_id: c for c in channels}
+
+    class _HardwarePID(PIDInterface):
+        def __init__(self) -> None:
+            self._pids: Dict[int, CorePID] = {}
+            for logical_id, cfg in channel_by_id.items():
+                setpoint = setpoints_hz.get(logical_id, 0.0)
+                limits = cfg.dac_limits
+                self._pids[logical_id] = CorePID(
+                    Kp=kp,
+                    Ki=ki,
+                    Kd=kd,
+                    setpoint=setpoint,
+                    sample_time=None,
+                    offset=0.0,
+                    output_limits=limits,
+                    auto_mode=True,
+                )
+
+        def __call__(self, channel_id: int, frequency_hz: float) -> float:
+            pid = self._pids[channel_id]
+            pid.setpoint = setpoints_hz.get(channel_id, pid.setpoint)
+            return float(pid(frequency_hz))
+
+    def _dac_writer(logical_id: int, voltage: float) -> None:
+        cfg = channel_by_id[logical_id]
+        physical_ch = cfg.dac_channel if cfg.dac_channel is not None else (logical_id - 1)
+        # USB_DAO expects the analog-output channel index and the target voltage.
+        daq.aout(physical_ch, voltage)
+
+
 ## AGENT_UPDATE
 # - Implemented `OptimizedLock` as an event-driven WLM locking core, using an `_EventAdapter`
 #   to prefer `WaitForWLMEvent` and fall back to polling when needed.
 # - Added a buffer-flush routine that uses `TriggerMeasurement` when available (or discards
 #   extra `GetFrequencyNum` reads) and clamps DAC voltages using per-channel limits supplied
 #   by the caller, keeping PID logic modular and voltage safety explicit.
+
 

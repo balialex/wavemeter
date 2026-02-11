@@ -1,0 +1,28 @@
+[project]
+name = "wavemeter"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=46.0.5",
+    "flask>=3.1.2",
+    "influxdb-client>=1.50.0",
+    "matplotlib>=3.10.8",
+    "mcculw>=1.0.0",
+    "netifaces>=0.11.0",
+    "numpy>=2.4.2",
+    "pandas>=3.0.0",
+    "psutil>=7.2.2",
+    "pyserial>=3.5",
+    "requests>=2.32.5",
+    "scipy>=1.17.0",
+    "seaborn>=0.13.2",
+    "toptica-lasersdk>=3.3.0",
+    "waitress>=3.0.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
