@@ -11,9 +11,9 @@ Stabilize multiple lasers (e.g., 493nm, 650nm) for a Ba+/Li quantum simulation e
 - **Lasers:** Toptica DLCpro (controlled via `toptica-lasersdk`).
 - **DAQs:** USB-DAQ for analog voltage output (Piezo control).
 
-## 3. Current Implementation (`wavemeterbali.py`)
+## 3. Current Implementation (`wavemeter_bali.ipynb`)
 - **Method:** Sequential switching between channels.
-- **Bottleneck:** Hardcoded `time.sleep(0.23)` after switching. 
+- **Bottleneck:** Hardcoded `time.sleep(0.23)` (or similar) after switching. 
     - *Insight:* Given the Sercalo switch's 1ms response time, this 230ms delay is entirely software-overhead or safety margin for the WLM buffer, not a hardware limitation of the switch.
 - **PID:** Classic feedback loop mapping WLM frequency error to DAC voltage.
 
